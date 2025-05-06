@@ -1,23 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 
-export default function SearchBar({ apiData, setFilteredData }) {
-  const [searchTerm, setSearchTerm] = useState('');
-
-  function handleOnChange(e) {
-    setSearchTerm(e.target.value);
-
-    if (e.target.value) {
-      const newFilteredData = apiData.filter(
-        (item) =>
-          item.mission_name &&
-          item.mission_name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredData(newFilteredData);
-    } else {
-      setFilteredData(apiData);
-    }
-  }
-
+export default function SearchBar({ searchTerm, handleSearchChange }) {
   const searchInputStyles = {
     width: '100%',
     padding: '10px 15px',
@@ -35,7 +18,7 @@ export default function SearchBar({ apiData, setFilteredData }) {
       <input
         type="text"
         value={searchTerm}
-        onChange={handleOnChange}
+        onChange={handleSearchChange}
         placeholder="Search..."
         style={searchInputStyles}
       />

@@ -119,11 +119,7 @@ export default function Card({ item }) {
       {isCollapsed && (
         <div style={bodyContainerStyles}>
           {imageUrl && (
-            <img
-              src={imageUrl}
-              alt="Mission patch or related image"
-              style={imageStyles}
-            />
+            <img src={imageUrl} alt="Mission patch" style={imageStyles} />
           )}
           <div style={textContentStyles}>
             <div style={metadataStyles}>

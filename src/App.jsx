@@ -8,7 +8,11 @@ import InfiniteList from './components/InfiniteList';
 function App() {
   const [apiData, setApiData] = useState([]);
   const [isFetching, setIsFetching] = useState(true);
-  const [filteredData, setFilteredData] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  function handleSearchChange(event) {
+    setSearchTerm(event.target.value);
+  }
 
   useEffect(() => {
     setIsFetching(true);
@@ -16,22 +20,24 @@ function App() {
       .then((response) => response.json())
       .then((data) => {
         setApiData(data);
-        setFilteredData(data);
       })
-      .then(() => {
+      .catch((err) => console.log(err))
+      .finally(() => {
         setIsFetching(false);
-      })
-      .catch((err) => console.log(err));
+      });
   }, []);
-
-  useEffect(() => {
-    console.log(filteredData);
-  }, [filteredData]);
 
   return (
     <div className="App">
-      <SearchBar apiData={apiData} setFilteredData={setFilteredData} />
-      {isFetching ? <Spinner /> : <InfiniteList items={filteredData} />}
+      <SearchBar
+        searchTerm={searchTerm}
+        handleSearchChange={handleSearchChange}
+      />
+      {isFetching ? (
+        <Spinner />
+      ) : (
+        <InfiniteList items={apiData} searchTerm={searchTerm} />
+      )}
     </div>
   );
 }

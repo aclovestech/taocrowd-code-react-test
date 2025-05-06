@@ -1,50 +1,63 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Card from '../Card';
 import Spinner from '../Spinner';
 
-export default function InfiniteList({ items }) {
+export default function InfiniteList({ items, searchTerm }) {
   const [visibleItems, setVisibleItems] = useState([]);
   const [chunkSize] = useState(10);
   const [currentChunk, setCurrentChunk] = useState(0);
-  const [loading, setLoading] = useState(false); // <-- Add loading state
+  const [loading, setLoading] = useState(false);
   const loaderRef = useRef(null);
 
-  // Load first chunk on mount
-  useEffect(() => {
-    setVisibleItems(items.slice(0, chunkSize));
-  }, [items, chunkSize]); // <-- Added chunkSize dependency
+  const filteredItems = useMemo(() => {
+    if (!searchTerm) {
+      return items;
+    }
+    const lowerCaseSearchTerm = searchTerm.toLowerCase();
+    return items.filter(
+      (item) =>
+        item.mission_name &&
+        item.mission_name.toLowerCase().includes(lowerCaseSearchTerm)
+    );
+  }, [items, searchTerm]);
 
-  // Load more chunks when loader is visible
   useEffect(() => {
-    // Prevent observing if already loading or at the end
-    if (loading || currentChunk * chunkSize >= items.length) {
+    setCurrentChunk(0);
+    setVisibleItems(filteredItems.slice(0, chunkSize));
+  }, [filteredItems, chunkSize]);
+
+  useEffect(() => {
+    if (loading || visibleItems.length >= filteredItems.length) {
+      if (loaderRef.current) {
+        const observer = new IntersectionObserver(() => {});
+        observer.unobserve(loaderRef.current);
+      }
       return;
     }
 
     const observer = new IntersectionObserver(
       (entries) => {
-        // Check if the loader is visible and we are not already loading
         if (entries[0].isIntersecting && !loading) {
-          setLoading(true); // <-- Start loading
+          setLoading(true);
 
-          // --- Add a delay here ---
           const timer = setTimeout(() => {
             const nextChunk = currentChunk + 1;
-            const nextItems = items.slice(
-              nextChunk * chunkSize,
-              (nextChunk + 1) * chunkSize
-            );
+            const startIndex = nextChunk * chunkSize;
+            const endIndex = startIndex + chunkSize;
+
+            const nextItems = filteredItems.slice(startIndex, endIndex);
 
             setVisibleItems((prev) => [...prev, ...nextItems]);
-            setCurrentChunk(nextChunk);
-            setLoading(false); // <-- End loading after delay
-          }, 500); // <-- Adjust delay time (in milliseconds) as needed
 
-          // Cleanup the timer if the component unmounts or dependencies change
+            setCurrentChunk(nextChunk);
+
+            setLoading(false);
+          }, 500);
+
           return () => clearTimeout(timer);
         }
       },
-      { threshold: 1 } // Trigger when the entire loader element is visible
+      { threshold: 1 }
     );
 
     if (loaderRef.current) {
@@ -52,53 +65,56 @@ export default function InfiniteList({ items }) {
     }
 
     return () => {
-      // Cleanup the observer
       if (loaderRef.current) {
         observer.unobserve(loaderRef.current);
       }
     };
-    // Added loading to the dependency array
-  }, [currentChunk, items, chunkSize, loading]);
+  }, [currentChunk, filteredItems, chunkSize, loading, visibleItems.length]);
 
-  // Check if we have displayed all items
-  const isEnd = visibleItems.length >= items.length; // <-- Check visibleItems length
+  const isEnd = visibleItems.length >= filteredItems.length;
+
+  const containerStyles = {
+    height: '400px',
+    width: '400px',
+    overflowY: 'auto',
+    margin: '0 auto',
+    border: '1px solid #eee',
+    borderRadius: '8px',
+  };
+
+  const listItemStyles = {
+    padding: '10px',
+    borderBottom: '1px solid #eee',
+    listStyle: 'none',
+  };
+
+  const loaderAreaStyles = {
+    textAlign: 'center',
+    padding: '10px',
+    fontWeight: 'bold',
+  };
 
   return (
-    <div
-      style={{
-        height: '400px',
-        width: '400px',
-        overflowY: 'auto',
-        margin: '0 auto',
-      }}
-    >
-      <ul style={{ listStyle: 'none', paddingLeft: 0 }}>
+    <div style={containerStyles}>
+      <ul style={{ listStyle: 'none', paddingLeft: 0, margin: 0 }}>
         {visibleItems.map((item, i) => (
-          <li
-            key={i} // Using index as key is okay here since list order is stable on append
-            style={{ padding: '10px', borderBottom: '1px solid #eee' }}
-          >
+          <li key={item.flight_number || i} style={listItemStyles}>
             <Card item={item} />
           </li>
         ))}
       </ul>
 
-      {/* Show spinner if not at the end AND loading */}
-      {/* The loaderRef div is always present when not at the end */}
       {!isEnd && (
-        <div ref={loaderRef} style={{ textAlign: 'center', padding: '10px' }}>
-          {loading ? <Spinner /> : 'Loading more...'}{' '}
-          {/* Or just keep the Spinner */}
+        <div ref={loaderRef} style={loaderAreaStyles}>
+          {loading ? <Spinner /> : 'Loading more...'}
         </div>
       )}
 
-      {/* Show end message if at the end */}
-      {isEnd && (
-        <div
-          style={{ textAlign: 'center', padding: '10px', fontWeight: 'bold' }}
-        >
-          End of list.
-        </div>
+      {isEnd && filteredItems.length > 0 && (
+        <div style={loaderAreaStyles}>End of results.</div>
+      )}
+      {isEnd && filteredItems.length === 0 && (
+        <div style={loaderAreaStyles}>No results found.</div>
       )}
     </div>
   );
